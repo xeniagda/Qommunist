@@ -160,7 +160,7 @@ if __name__ == "__main__":
     
     try:
         val = int(game)
-        if val in game:
+        if val in games:
             client.connectTo(val)
         else:
             client.createBoard()
