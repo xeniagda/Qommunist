@@ -103,7 +103,7 @@ class Client:
         while True:
             if self.rec_lines.hasNext():
                 self.readBoard()
-            time.sleep(1)
+            time.sleep(0.01)
 
     def readBoard(self):
 
