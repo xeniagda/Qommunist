@@ -16,26 +16,31 @@ Board representation:
                 Wall [3 5] RightLeft
             ], 
             getPlayers = [
-                NetPlayer (PlayerPawn (Pawn [4 0] Up White)) <socket: 28>,
-                NetPlayer (PlayerPawn (Pawn [4 8] Down Yellow)) <socket: 29>,
-                NetPlayer (PlayerPawn (Pawn [0 4] Right Brown)) <socket: 31>,
-                NetPlayer (PlayerPawn (Pawn [8 4] Left Black)) <socket: 30>,
+                NetPlayer (PlayerPawn (Pawn [4 0] Up)) <socket: 28>,
+                NetPlayer (PlayerPawn (Pawn [4 8] Down)) <socket: 29>,
+                NetPlayer (PlayerPawn (Pawn [0 4] Right)) <socket: 31>,
+                NetPlayer (PlayerPawn (Pawn [8 4] Left)) <socket: 30>,
                 Waiting (Government 16)], 
             getPlayerTurn = 0, 
             getId = 4
         }
     
     Represented as
-        8;0 2 u,3 5 r;n 4 0 u w,n 4 8 d y,n 0 4 r b,n 8 4 l l,w 10;0;4
-        ^ ^---^ ^---^ ^-------^ ^-------^ ^-------^ ^-------^ ^--^ | ^
-        |   |     |     |         |        |          |        |   ^ id=4
-        |   |     |     |         |        |          |        ^ player turn=0
-        |   |     |     |         |        |          ^   Waiting (Government 16)]
-        |   |     |     |         |        |  NetPlayer (PlayerPawn (Pawn [8 4] Left Black))
-        |   |     |     |         |        ^
-        |   |     |     |         ^    NetPlayer (PlayerPawn (Pawn [0 4] Right Brown))
-        |   |     |     ^   NetPlayer (PlayerPawn (Pawn [4 8] Down Yellow))
-     size   |     ^  NetPlayer (PlayerPawn (Pawn [4 0] Up White))
+        8;0 2 u,3 5 r;n 4 0 u,n 4 8 d,n 0 4 r,n 8 4 l,w 10;0;4
+        ^ ^---^ ^---^ ^-----^ ^-----^ ^-----^ ^-----^ ^--^ | ^
+        |   |     |     |       |      |        |      |   ^ id=4
+        |   |     |     |       |      |        |      ^ player turn=0
+        |   |     |     |       |      |        ^   Waiting (Government 16)]
+        |   |     |     |       |      ^  NetPlayer (PlayerPawn (Pawn [8 4] Left))
+        |   |     |     |       ^    NetPlayer (PlayerPawn (Pawn [0 4] Right))
+        |   |     |     ^   NetPlayer (PlayerPawn (Pawn [4 8] Down))
+     size   |     ^  NetPlayer (PlayerPawn (Pawn [4 0] Up))
             ^    Wall [3 5] RightLeft
          Wall [0 2] UpDown
     
+
+Events:
+    Pawn:
+        Go:
+            Represented as
+                g direction

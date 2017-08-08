@@ -40,63 +40,134 @@ data Edge
     | Right
     deriving (Show, Eq)
 
-data Color
-    = White
-    | Yellow
-    | Brown
-    | Black
-    deriving (Show, Eq)
-
-data Pawn a
-    = Pawn (Vec2 a) Edge Color
-    deriving (Show, Eq)
 
 data Player a
-    = PlayerPawn (Pawn a)
+    = PlayerPawn (Vec2 a) Edge
     | Government
         Integer     -- Walls left
     deriving (Show, Eq)
 
 data NetPlayer a
-    = NetPlayer (Player a) Client
-    | Waiting (Player a)
+    = NetPlayer a Client
+    | Waiting a
     deriving (Show, Eq)
+
+extract (NetPlayer a _) = a
+extract (Waiting a) = a
+
+instance Functor NetPlayer where
+    fmap f (NetPlayer x cl) = NetPlayer (f x) cl
+    fmap f (Waiting x) = Waiting (f x)
+
+instance Applicative NetPlayer where
+    pure a = Waiting a
+    Waiting f <*> Waiting x = Waiting $ f x
+    NetPlayer f cl <*> Waiting x = NetPlayer (f x) cl
+    Waiting f <*> NetPlayer x cl = NetPlayer (f x) cl
+    NetPlayer f cl <*> NetPlayer x _ = NetPlayer (f x) cl
+
 
 data Game =
     Game
         { getSize :: Integer
         , getWalls :: [Wall Integer]
-        , getPlayers :: [NetPlayer Integer]
+        , getPlayers :: [NetPlayer (Player Integer)]
         , getPlayerTurn :: Int
         , getId :: Int
         }
     deriving (Show, Eq)
 
+data Move
+    = PawnMove Int (Vec2 Integer)
+    deriving (Show, Eq)
+
+parseMove :: Int -> B.ByteString -> Maybe Move
+parseMove player x =
+    case B.uncons x of
+        Nothing -> Nothing
+        Just (x, rest) ->
+            case x of
+                'g' -> -- Go
+                    let dir = 
+                            case B.head rest of
+                                'u' -> Just $ Vec2 0 1
+                                'd' -> Just $ Vec2 0 (-1)
+                                'l' -> Just $ Vec2 (-1) 0
+                                'r' -> Just $ Vec2 1 0
+                                _ -> Nothing
+                    in case dir of
+                        Just x -> Just $ PawnMove player x
+                        Nothing -> Nothing
+                _ -> Nothing
+
+canMove :: Vec2 Integer -> Vec2 Integer -> Game -> Bool
+canMove pos vel game =
+    let intersecting = getIntersectingWalls pos vel game
+    in length intersecting == 0
+
+getIntersectingWalls :: Vec2 Integer -> Vec2 Integer -> Game -> [Wall Integer]
+getIntersectingWalls pos@(Vec2 x y) vel@(Vec2 dx dy) game =
+    filter (\ (Wall (Vec2 wx wy) dir) ->
+        case dir of
+            UpDown ->
+                (x < wx) /= (x + dx < wx)
+                &&
+                wy - 1 <= y && wy + 1 > y
+            RightLeft ->
+                (y < wy) /= (y + dy < wy)
+                &&
+                wx - 1 <= x && wx + 1 > x
+    ) $ getWalls game
+
+doMove :: Move -> Game -> (Game, Bool)
+doMove (PawnMove plIdx (Vec2 dx dy)) game =
+    --if plIdx >= length (getPlayers game)
+    --    then (game, False)
+    --    else
+    let player = getPlayers game !! plIdx
+        move pl =
+            case pl of
+                PlayerPawn (Vec2 x y) e ->
+                    if canMove (Vec2 x y) (Vec2 dx dy) game
+                        then Just $ PlayerPawn (Vec2 (x + dx) (y + dy)) e
+                        else Nothing
+                _ -> Nothing
+        pawn = extract $ fmap move player
+        (player', worked) =
+            case pawn of
+                Just x -> (x <$ player, True)
+                Nothing -> (player, False)
+        game' =
+            game
+                {
+                    getPlayers =
+                        setAt 
+                            (getPlayers game)
+                            plIdx
+                            player'
+                }
+    in (game', worked)
 
 makeGame size id =
     Game
-        { getWalls = 
-            [ Wall (Vec2 0 2) UpDown
-            , Wall (Vec2 3 5) RightLeft
+        { getWalls =
+            [ Wall (Vec2 1 2) UpDown
+            , Wall (Vec2 4 5) RightLeft
             ]
         , getSize = size
         , getPlayers =
-            [ Waiting $ PlayerPawn $ Pawn
+            [ Waiting $ PlayerPawn
                 (Vec2 (size `quot` 2) 0)
                 Up
-                White
-            , Waiting $ PlayerPawn $ Pawn
+            , Waiting $ PlayerPawn
                 (Vec2 (size `quot` 2) size)
                 Down
-                Yellow
-            , Waiting $ PlayerPawn $ Pawn
+            , Waiting $ PlayerPawn
                 (Vec2 0 (size `quot` 2))
                 Right
-                Brown
-            , Waiting $ PlayerPawn $ Pawn
+            , Waiting $ PlayerPawn
                 (Vec2 size (size `quot` 2))
                 Left
-                Black
             , Waiting $ Government
                 ((size * size) `quot` 4)
             ]
@@ -124,7 +195,7 @@ getNumOfConnected game =
         )
         $ getPlayers game
 
-joinGame :: Client -> Game -> Game
+joinGame :: Client -> Game -> (Game, Int)
 joinGame client game =
     let firstWaitingIdx' =
             findIndex (\player ->
@@ -133,16 +204,18 @@ joinGame client game =
                     _ -> False
             ) $ getPlayers game
     in case firstWaitingIdx' of
-        Nothing -> game
+        Nothing -> (game, -1)
         Just firstWaitingIdx ->
             let Waiting pl = (getPlayers game) !! firstWaitingIdx
-            in game {
-                getPlayers = 
-                    setAt
-                        (getPlayers game)
-                        firstWaitingIdx
-                        (NetPlayer pl client)
-            }
+                game' = game
+                    {
+                        getPlayers =
+                            setAt
+                                (getPlayers game)
+                                firstWaitingIdx
+                                (NetPlayer pl client)
+                    }
+            in (game', firstWaitingIdx)
 
 getGame :: TVar [Game] -> Int -> STM (Maybe Game) -- Get a game from the TVar.
 getGame var id = do
@@ -153,22 +226,10 @@ getGame var id = do
 
 getGame' var id = atomically $ getGame var id
 
-getGameMake :: TVar [Game] -> Int -> STM Game -- Get a game from the TVar. If it doesn't exist, make it
-getGameMake var id = do
-    game <- getGame var id
-    case game of
-        Just game -> return game
-        Nothing -> do
-                let game = makeGame defaultSize id
-                modifyTVar var (game:)
-                return game
-
-getGameMake' var id = atomically $ getGameMake var id
-
 update :: TVar [Game] -> Game -> STM ()
 update tgames game =
     modifyTVar tgames (
-        map (\g -> 
+        map (\g ->
                 if getId g == getId game
                     then game
                     else g
@@ -176,3 +237,11 @@ update tgames game =
     )
 
 update' tgames game = atomically $ update tgames game
+
+getNextId :: [Game] -> Int
+getNextId games =
+    let check n =
+            if any ((==n) . getId) games
+                then check $ n + 1
+                else n
+    in check 1

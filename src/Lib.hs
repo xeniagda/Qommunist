@@ -47,26 +47,47 @@ communicate games (Client csock ip) = do
 
     gamesInProgress <- (\x -> filter (\game -> not $ isAllConnected game) x) <$> readTVarIO games
 
-    send csock
-        $ B.append 
-            (B.pack "Games:") 
-            $ B.intercalate (B.pack ",") $ map (B.pack . show . getId) gamesInProgress
+    sendLn csock $ 
+        B.append (B.pack "G") $ 
+        B.intercalate (B.pack ",") $ map (B.pack . show . getId) gamesInProgress
 
     gameId <- readMaybe <$> B.unpack <$> recv csock 100
     
     case gameId of
         Nothing -> do
-            send csock $ B.pack "gameId must be an int!"
-            close csock
-            return ()
-        Just gameId' -> do
-            game <-
-                joinGame (Client csock ip) <$>
-                getGameMake' games gameId'
-            
-            update' games game
+            game' <- (makeGame 8 . getNextId) <$> readTVarIO games
 
+            let (game, plID) = joinGame (Client csock ip) game'
+
+            sendLn csock $ B.pack $ show plID
+
+            atomically $ modifyTVar games (game:)
+
+            putStrLn $ show ip ++ " made a new game!"
             putStrLn $ show game
 
-            clientLoop games gameId' (Client csock ip) (WaitingForPlayers 0)
+            clientLoop games (getId game) (Client csock ip) (WaitingForPlayers 0)
 
+        Just gameId' -> do
+            game'' <- getGame' games gameId'
+
+            case game'' of
+                Nothing -> do
+                    sendLn csock $ B.pack "Game not found"
+                    return ()
+                Just game' -> do
+                    if isAllConnected game'
+                        then do
+                            sendLn csock $ B.pack "full"
+                            close csock
+                        else do
+
+                            let (game, plID) = joinGame (Client csock ip) game'
+
+                            sendLn csock $ B.pack $ show plID
+
+                            update' games game
+
+                            putStrLn $ show game
+
+                            clientLoop games gameId' (Client csock ip) (WaitingForPlayers 0)

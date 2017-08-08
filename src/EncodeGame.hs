@@ -31,37 +31,26 @@ encodeWall (Wall (Vec2 x y) dir) =
             UpDown -> "u"
         ]
 
-encodePlayers :: (Show a) => [NetPlayer a] -> B.ByteString
+encodePlayers :: (Show a) => [NetPlayer (Player a)] -> B.ByteString
 encodePlayers players =
     B.intercalate (B.pack ",") $ map encodeNetPlayer players
 
-encodeNetPlayer :: (Show a) => NetPlayer a -> B.ByteString
+encodeNetPlayer :: (Show a) => NetPlayer (Player a) -> B.ByteString
 encodeNetPlayer (NetPlayer pl (Client _ ip)) =
     B.intercalate (B.pack " ")
         [ B.pack "n"
         , encodePlayer pl
-        , B.pack $ show ip
+        -- , B.pack $ show ip
         ]
 encodeNetPlayer (Waiting pl) =
     B.append (B.pack "w ") (encodePlayer pl)
 
-
 encodePlayer :: (Show a) => Player a -> B.ByteString
-encodePlayer (PlayerPawn (Pawn (Vec2 x y) edge col)) =
+encodePlayer (PlayerPawn (Vec2 x y) edge) =
     B.intercalate (B.pack " ")
         [ B.pack "p"
         , B.pack $ show x
         , B.pack $ show y
-        , B.pack $ case edge of
-            Up -> "u"
-            Down -> "d"
-            Left -> "l"
-            Right -> "r"
-        , B.pack $ case col of
-            White -> "w"
-            Yellow -> "y"
-            Brown -> "b"
-            Black -> "l"
         ]
 encodePlayer (Government i) =
     B.intercalate (B.pack " ")
