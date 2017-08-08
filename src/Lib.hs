@@ -48,7 +48,7 @@ communicate games (Client csock ip) = do
     gamesInProgress <- (\x -> filter (\game -> not $ isAllConnected game) x) <$> readTVarIO games
 
     sendLn csock $ 
-        B.append (B.pack "G") $ 
+        B.append (B.pack "g") $ 
         B.intercalate (B.pack ",") $ map (B.pack . show . getId) gamesInProgress
 
     gameId <- readMaybe <$> B.unpack <$> recv csock 100

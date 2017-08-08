@@ -8,15 +8,24 @@ class Board:
     def __init__(self, size, walls, players, turn, b_id):
         self.size = size        # Int
         self.walls = walls      # [(x, y, Horz/Vert)]
-        self.players = players  # [(connected, x, y) or (connected, walls_left)]
+        self.players = players  # [(connected, x, y)]
+        self.govern_connected = False
+        self.govern_bricks_left = 0
         self.turn = turn        # Int
         self.b_id = b_id        # Int
 
     def started(self):
-        return all(map(lambda pl: pl[0], self.players)) and self.players != []
+        return all(map(lambda pl: pl[0], self.players)) and self.govern_connected and self.players != []
 
     def __str__(self):
-        return "Board(size=%s, walls=%s, players=%s, turn=%s, b_id=%s)" % (self.size, self.walls, self.players, self.turn, self.b_id)
+        return "Board(size=%s, walls=%s, players=%s, govern=%s, turn=%s, b_id=%s)" % (
+                self.size,
+                self.walls,
+                self.players,
+                self.govern_bricks_left if self.govern_connected else "nope",
+                self.turn,
+                self.b_id
+        )
 
 class LineIterator:
     def __init__(self):
@@ -72,7 +81,7 @@ class Client:
 
     def getGames(self):
         games = self.rec_lines.wait()
-        if games[0] == "g":
+        if games[0] == "g" and len(games) > 1:
             return list(map(int, games[1:].split(",")))
         return []
 
@@ -117,7 +126,8 @@ class Client:
             connected = things[0] == "n"
 
             if things[1] == "g":  # Is government
-                self.board.players.append((connected, int(things[2])))
+                self.board.govern_connected = connected
+                self.board.govern_bricks_left = int(things[2])
             else:
                 self.board.players.append(
                     (
