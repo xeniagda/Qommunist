@@ -156,9 +156,15 @@ if __name__ == "__main__":
     games = client.getGames()
     print("Games:", games)
 
-    if games:
-        client.connectTo(games[0])
-    else:
+    game = input("> ")
+    
+    try:
+        val = int(game)
+        if val in game:
+            client.connectTo(val)
+        else:
+            client.createBoard()
+    except ValueError:
         client.createBoard()
 
     while True:

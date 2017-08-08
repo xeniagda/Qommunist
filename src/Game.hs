@@ -162,12 +162,12 @@ makeGame size id =
             , Waiting $ PlayerPawn
                 (Vec2 (size `quot` 2) size)
                 Down
-            , Waiting $ PlayerPawn
-                (Vec2 0 (size `quot` 2))
-                Right
-            , Waiting $ PlayerPawn
-                (Vec2 size (size `quot` 2))
-                Left
+            -- , Waiting $ PlayerPawn
+            --     (Vec2 0 (size `quot` 2))
+            --     Right
+            -- , Waiting $ PlayerPawn
+            --     (Vec2 size (size `quot` 2))
+            --     Left
             , Waiting $ Government
                 ((size * size) `quot` 4)
             ]
