@@ -40,7 +40,24 @@ Board representation:
     
 
 Events:
-    Pawn:
-        Go:
-            Represented as
-                g direction
+    Go:
+        Syntax:
+            g`dir`
+
+        Dir is one of 'u', 'l', 'd' and 'r'
+
+        Example:
+            gu - Go up
+            gr - Go right
+
+        Can only be done by pawns
+    
+    Place:
+        Syntax:
+            p`x``dir``y`
+
+        X and y are integers and dir is one of 'u' and 'r'.
+
+        Example:
+            p3u4 - Place an upwards board at 3,4
+            p6r2 - Place a rightwards board at 6,2
