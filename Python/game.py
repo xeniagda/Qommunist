@@ -36,15 +36,23 @@ if ONLINE:
 	games = client.getGames()
 	print(client)
 	gameID = inputBox.ask(screen,"Choose a GameID: " + str(games))
-	if gameID in games:
-		client.connectTo(gameID)
-	else:
-		client.createBoard()
+	try:
+		if int(gameID) in games:
+			client.connectTo(gameID)
+		else:
+			client.createBoard()
+	except: client.createBoard()
 
 else:
 	games = [1]
 	client = None
+time.sleep(1)
 
+NUM_PLAYERS = len(client.board.players)
+PLAYER_ID = client.player_id
+IS_GOVERNMENT = (PLAYER_ID > NUM_PLAYERS)
+
+# SPRITE FUNCTIONS
 def load_image(path):
     if pygame.image.get_extended():
         return pygame.image.load(path).convert_alpha()
@@ -58,15 +66,6 @@ def load_image(path):
 
     return surf
 
-#DRAW BOARD
-board = load_image("Assets/board1.png").convert()
-board = pygame.transform.scale(board,screensize)
-screen.blit(board,(0,0))
-
-NUM_PLAYERS = 2
-IS_GOVERNMENT = (client.player_id > NUM_PLAYERS)
-
-# SPRITE FUNCTIONS
 def pxPos(pos): #Return upper left px pos of tile (x,y). Tile index 1-9
 	position = [scale_factor*4,scale_factor*4]
 	position[0] += scale_factor*8*pos[0]
@@ -93,7 +92,7 @@ board = load_image("Assets/board1.png")
 board = pygame.transform.scale(board,screensize)
 screen.blit(board,(0,0))
 
-players = {1:(4,8), 2:(4,0), 3:(0,4), 4:(8,4)}  # ID:(x,y) x,y: 0-8
+players = {0:(4,8), 1:(4,0), 2:(0,4), 3:(8,4)}  # ID:(x,y) x,y: 0-8
 playerSprites = [load_image("Assets/pawn%s.png" % n) for n in range(4)]
 playerSprites = scaleSprites(playerSprites,scale_factor)
 
@@ -117,7 +116,14 @@ def unpackWalls():
 	walls = list(map(invertY,walls))
 	return walls
 
-time.sleep(0.5)
+def move(event):
+	pass
+
+while True:
+	if client.board.started():
+		break
+	time.sleep(0.5)
+	
 while True:
 	#Listen to server -> Update
 	players = unpackPlayers()
@@ -131,6 +137,18 @@ while True:
 			exit()
 		if event.type == pygame.VIDEORESIZE:
 			pass # IMPLEMENT
+		if event.type == pygame.KEYDOWN:
+			if event.key == pygame.K_UP:
+				client.doMove(b"gu")
+				
+			if event.key == pygame.K_DOWN:
+				client.doMove(b"gd")
+				
+			if event.key == pygame.K_LEFT:
+				client.doMove(b"gl")
+				
+			if event.key == pygame.K_RIGHT:
+				client.doMove(b"gr")
 
 	#Draw players
 	for i in range(len(players)):
@@ -141,16 +159,19 @@ while True:
 	#Draw walls
 	for x,y,vertical in walls:
 		pos = pxPos((x,y))
-		pos[1] = pos[1]-scale_factor #Adjust from top left corner of tile.
 		wSprite = wallSprite
 		if vertical:
 			wSprite = pygame.transform.rotate(wSprite,90)
+			pos = offset(pos,(-1,0))
+		else:
+			pos = offset(pos,(-8,7))
 		screen.blit(wSprite,pos)
 
 	#Draw details
 	if turn in range(NUM_PLAYERS): # Draw highlight
 		pos = pxPos(players[turn])
 		pos = offset(pos,(0,0))
+		screen.blit(highlightSprite,pos)
 
 
 
