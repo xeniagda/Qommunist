@@ -2,6 +2,7 @@ import pygame
 import numpy as np
 import time
 
+from BMPWithAlpha import bmp_load
 import inputBox
 import Player
 
@@ -32,8 +33,21 @@ else:
 	games = [1]
 	client = None
 
+def load_image(path):
+    if pygame.image.get_extended():
+        return pygame.image.load(path).convert()
+    if 'Image' not in locals():  # Is PIL imported?
+        from PIL import Image
+
+    im = Image.open(path)
+    
+
+    surf = pygame.image.fromstring(im.tobytes(), im.size, im.mode)
+
+    return surf
+
 #DRAW BOARD
-board = pygame.image.load("Assets/board1.png").convert()
+board = load_image("Assets/board1.png").convert()
 board = pygame.transform.scale(board,screensize)
 screen.blit(board,(0,0))
 
@@ -50,12 +64,12 @@ def scaleSprites(sprites,scale_factor): #Scale player sprites
 
 #PLAYER DATA
 players = {1:(4,8), 2:(4,0), 3:(0,4), 4:(8,4)} #(ID,x,y) x,y: 0-8
-playerSprites = [pygame.image.load("Assets/pawn%s.png" % n) for n in range(4)]
+playerSprites = [load_image("Assets/pawn%s.png" % n).convert_alpha() for n in range(4)]
 playerSprites = scaleSprites(playerSprites,scale_factor)
 
 #WALL DATA
 walls = [[1,6,True],[4,3,False]] #Pos: 1-8, Bool(Vertical)
-wallSprite = pygame.image.load("Assets/wall1.png")
+wallSprite = load_image("Assets/wall1.png")
 wallSprite = pygame.transform.scale(wallSprite,(scale_factor*15,scale_factor))
 
 def invertY(pos):
