@@ -47,7 +47,7 @@ else:
 
 def load_image(path):
     if pygame.image.get_extended():
-        return pygame.image.load(path).convert()
+        return pygame.image.load(path).convert_alpha()
     if 'Image' not in locals():  # Is PIL imported?
         from PIL import Image
 
