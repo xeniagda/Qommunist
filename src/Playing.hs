@@ -66,7 +66,7 @@ clientLoop games gameId client@(Client csock ip) (Playing lastGame) = do
         else return ()
         -- Sluta vara dum ghc tack jag blir sur på dig när du gör så här
 
-    playerMove <- (parseMove playerId) <$> recv csock 100
+    playerMove <- (parseMove playerId game) <$> recv csock 100
     
     let game' =
             case playerMove of

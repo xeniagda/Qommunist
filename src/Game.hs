@@ -79,26 +79,47 @@ data Game =
 
 data Move
     = PawnMove Int (Vec2 Integer)
+    | PlaceWall (Wall Integer)
     deriving (Show, Eq)
 
-parseMove :: Int -> B.ByteString -> Maybe Move
-parseMove player x =
-    case B.uncons x of
+parseMove :: Int -> Game -> B.ByteString -> Maybe Move
+parseMove playerIdx game x =
+    let player = extract $ getPlayers game !! playerIdx
+    in case B.uncons x of
         Nothing -> Nothing
         Just (x, rest) ->
             case x of
+                'p' -> -- Go
+                    case player of
+                        PlayerPawn _ _ -> Nothing
+                        _ -> parsePlaceWall rest
                 'g' -> -- Go
-                    let dir = 
-                            case B.head rest of
-                                'u' -> Just $ Vec2 0 1
-                                'd' -> Just $ Vec2 0 (-1)
-                                'l' -> Just $ Vec2 (-1) 0
-                                'r' -> Just $ Vec2 1 0
-                                _ -> Nothing
-                    in case dir of
-                        Just x -> Just $ PawnMove player x
-                        Nothing -> Nothing
+                    case player of
+                        Government _ -> Nothing
+                        _ ->
+                            let dir = 
+                                    case B.head rest of
+                                        'u' -> Just $ Vec2 0 1
+                                        'd' -> Just $ Vec2 0 (-1)
+                                        'l' -> Just $ Vec2 (-1) 0
+                                        'r' -> Just $ Vec2 1 0
+                                        _ -> Nothing
+                            in case dir of
+                                Just x -> Just $ PawnMove playerIdx x
+                                Nothing -> Nothing
                 _ -> Nothing
+
+parsePlaceWall :: B.ByteString -> Maybe Move
+parsePlaceWall cmd = do
+    (x, restX) <- B.readInt cmd
+    (d, restD) <- B.uncons restX
+    let dir' = case d of
+            'u' -> Just UpDown
+            'r' -> Just RightLeft
+            _ -> Nothing
+    dir <- dir'
+    (y, _) <- B.readInt restD
+    return $ PlaceWall $ Wall (Vec2 (fromIntegral x) (fromIntegral y)) dir
 
 canMove :: Vec2 Integer -> Vec2 Integer -> Game -> Bool
 canMove pos vel game =
@@ -120,6 +141,13 @@ getIntersectingWalls pos@(Vec2 x y) vel@(Vec2 dx dy) game =
     ) $ getWalls game
 
 doMove :: Move -> Game -> (Game, Bool)
+doMove (PlaceWall wall) game =
+    let game' =
+            game {
+                getWalls = wall : getWalls game
+            }
+    in (game', True)
+
 doMove (PawnMove plIdx (Vec2 dx dy)) game =
     --if plIdx >= length (getPlayers game)
     --    then (game, False)
