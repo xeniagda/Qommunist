@@ -2,7 +2,6 @@ import pygame
 import numpy as np
 import time
 
-from BMPWithAlpha import bmp_load
 import inputBox
 import Player
 
