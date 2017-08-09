@@ -117,8 +117,9 @@ class Client:
 
         self.board.walls = []
         for wall in walls.split(","):
-            (x, y, direction) = wall.split(" ")
-            self.board.walls.append((int(x), int(y), direction=="u"))
+            if wall:
+                (x, y, direction) = wall.split(" ")
+                self.board.walls.append((int(x), int(y), direction=="u"))
 
         self.board.players = []
         for player in players.split(","):
