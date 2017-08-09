@@ -45,6 +45,23 @@ else:
 	games = [1]
 	client = None
 
+def load_image(path):
+    if pygame.image.get_extended():
+        return pygame.image.load(path).convert()
+    if 'Image' not in locals():  # Is PIL imported?
+        from PIL import Image
+
+    im = Image.open(path)
+    
+
+    surf = pygame.image.fromstring(im.tobytes(), im.size, im.mode)
+
+    return surf
+
+#DRAW BOARD
+board = load_image("Assets/board1.png").convert()
+board = pygame.transform.scale(board,screensize)
+screen.blit(board,(0,0))
 
 NUM_PLAYERS = 2
 IS_GOVERNMENT = (client.player_id > NUM_PLAYERS)
@@ -55,11 +72,6 @@ def pxPos(pos): #Return upper left px pos of tile x,y. Tile index 1-9
 	position[0] += scale_factor*8*pos[0]
 	position[1] += scale_factor*8*pos[1]
 	return position
-
-def scaleSprites(sprites,scale_factor): #Scale player sprites
-	for sprite in sprites:
-		sprite = pygame.transform.scale(sprite,(scale_factor*8,)*2)
-	return sprites
 
 def invertY(pos):
 	pos = list(pos)
@@ -73,10 +85,16 @@ screen.blit(board,(0,0))
 
 players = {1:(4,8), 2:(4,0), 3:(0,4), 4:(8,4)}  # ID:(x,y) x,y: 0-8
 playerSprites = [pygame.image.load("Assets/pawn%s.png" % n) for n in range(4)]
+
+def scaleSprites(sprites,scale_factor): #Scale player sprites
+	for sprite in sprites:
+		sprite = pygame.transform.scale(sprite,(scale_factor*8,)*2)
+	return sprites
+
 playerSprites = scaleSprites(playerSprites,scale_factor)
 
 walls = [[1,6,True],[4,3,False]] #Pos: 1-8, Bool(Vertical)
-wallSprite = pygame.image.load("Assets/wall1.png")
+wallSprite = load_image("Assets/wall1.png")
 wallSprite = pygame.transform.scale(wallSprite,(scale_factor*15,scale_factor))
 
 
