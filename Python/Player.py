@@ -145,7 +145,10 @@ class Client:
         return self.board.started() and self.board.turn == self.player_id
 
     def doMove(self, move):
-        self.socket.send(move)
+        if self.myTurn():
+            self.socket.send(move)
+            return True
+        return False
 
 
 if __name__ == "__main__":
