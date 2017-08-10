@@ -17,6 +17,7 @@ import Base
 import Game
 import EncodeGame
 import Playing
+import ParallelCommunication
 
 
 main :: IO ()
@@ -34,60 +35,62 @@ main = do
 
 mainLoop sock games = do
     (s, ip) <- accept sock
-    let client = Client s ip
+    
+    tRecv <- newTVarIO []
+    tSend <- newTVarIO []
+    pings <- newTVarIO 0
+    
+    let client = Client ip pings tRecv tSend
 
     forkIO $ communicate games client
+
+    parallelCommunicate s client
 
     mainLoop sock games
 
 communicate :: TVar [Game] -> Client -> IO ()
-communicate games (Client csock ip) = do
+communicate games client@(Client ip pigns tSend tRecv) = do
 
     putStrLn $ "Connected to " ++ show ip
 
     gamesInProgress <- (\x -> filter (\game -> not $ isAllConnected game) x) <$> readTVarIO games
 
-    sendLn csock $ 
+    cSendLn client $ 
         B.append (B.pack "g") $ 
         B.intercalate (B.pack ",") $ map (B.pack . show . getId) gamesInProgress
 
-    gameId <- readMaybe <$> B.unpack <$> recv csock 100
-    
+    gameId <- readMaybe <$> B.unpack <$> cRecvWait client
+
     case gameId of
         Nothing -> do
             game' <- (makeGame 8 . getNextId) <$> readTVarIO games
 
-            let (game, plID) = joinGame (Client csock ip) game'
+            let (game, plID) = joinGame client game'
 
-            sendLn csock $ B.pack $ show plID
+            cSendLn client $ B.pack $ show plID
 
             atomically $ modifyTVar games (game:)
 
-            putStrLn $ show ip ++ " made a new game!"
-            putStrLn $ show game
-
-            clientLoop games (getId game) (Client csock ip) (WaitingForPlayers 0)
+            clientLoop games (getId game) client (WaitingForPlayers 0)
 
         Just gameId' -> do
             game'' <- getGame' games gameId'
 
             case game'' of
                 Nothing -> do
-                    sendLn csock $ B.pack "Game not found"
-                    return ()
+                    cSendLn client $ B.pack "Game not found"
+                    communicate games client
                 Just game' -> do
                     if isAllConnected game'
                         then do
-                            sendLn csock $ B.pack "full"
-                            close csock
+                            cSendLn client $ B.pack "full"
+                            communicate games client
                         else do
 
-                            let (game, plID) = joinGame (Client csock ip) game'
+                            let (game, plID) = joinGame client game'
 
-                            sendLn csock $ B.pack $ show plID
+                            cSendLn client $ B.pack $ show plID
 
                             update' games game
 
-                            putStrLn $ show game
-
-                            clientLoop games gameId' (Client csock ip) (WaitingForPlayers 0)
+                            clientLoop games gameId' client (WaitingForPlayers 0)
