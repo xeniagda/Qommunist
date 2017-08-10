@@ -17,8 +17,7 @@ Game Loop:
 	4. Walls
 	5. Reset
 
-	TODO:	Fix move queue
-			Move pawn using mouse
+	TODO:	Move pawn using mouse
 			Play as government / place walls
 			Windows padding, extra info
 """
@@ -29,7 +28,7 @@ SCREENSIZE = 79*SCALE_FACTOR,79*SCALE_FACTOR
 screen = pygame.display.set_mode(SCREENSIZE, pygame.RESIZABLE)
 
 #SERVER
-SERVER_HOST = "localhost" #"172.16.1.162" 
+SERVER_HOST = "172.16.1.162" 
 PORT = 1961
 ONLINE = True
 
@@ -51,8 +50,7 @@ else:
 	client = None
 
 NUM_PLAYERS = len(client.board.players)
-PLAYER_ID = client.player_id
-IS_GOVERNMENT = (PLAYER_ID > NUM_PLAYERS)
+IS_GOVERNMENT = (client.player_id > NUM_PLAYERS)
 
 # SPRITE FUNCTIONS
 def load_image(path):
@@ -140,8 +138,8 @@ def move(event):
 
 def moveTo(tile):
 	direction = [0,0]
-	direction[0] = tile[0]-players[PLAYER_ID][0]
-	direction[1] = tile[1]-players[PLAYER_ID][1]
+	direction[0] = tile[0]-players[client.player_id][0]
+	direction[1] = tile[1]-players[client.player_id][1]
 	if direction == [0,1]:
 		client.doMove(b"gu")
 	if direction == [1,0]:
@@ -179,7 +177,7 @@ while True:
 			screen = pygame.display.set_mode(SCREENSIZE, pygame.RESIZABLE)
 			trigger_rescale = True
 
-		if event.type == pygame.KEYDOWN and turn == PLAYER_ID:
+		if event.type == pygame.KEYDOWN and turn == client.player_id:
 			move(event)
 
 		if event.type == pygame.MOUSEBUTTONUP:
@@ -216,7 +214,7 @@ while True:
 	if IS_GOVERNMENT:
 		pass
 
-	pygame.display.set_caption("You are player %s, it's player %s's turn" % (PLAYER_ID+1,turn+1))
+	pygame.display.set_caption("You are player %s, it's player %s's turn" % (client.player_id+1,turn+1))
 
 	pygame.display.flip()
 	screen.blit(boardSprite,(0,0))
