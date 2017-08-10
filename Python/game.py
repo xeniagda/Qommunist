@@ -17,16 +17,17 @@ Game Loop:
 	4. Walls
 	5. Reset
 
-	TODO: Inputs
+	TODO: Play as government
+		  Rescale sprites, extra information
 """
 #DISPLAY SETUP
 pygame.init()
-scale_factor = 10
-screensize = width, hight = 79*scale_factor,79*scale_factor
-screen = pygame.display.set_mode(screensize, pygame.RESIZABLE)
+SCALE_FACTOR = 10
+SCREENSIZE = 79*SCALE_FACTOR,79*SCALE_FACTOR
+screen = pygame.display.set_mode(SCREENSIZE, pygame.RESIZABLE)
 
 #SERVER
-SERVER_HOST = "172.16.1.162" 
+SERVER_HOST = "localhost" #"172.16.1.162" 
 PORT = 1961
 ONLINE = True
 
@@ -46,7 +47,6 @@ if ONLINE:
 else:
 	games = [1]
 	client = None
-time.sleep(1)
 
 NUM_PLAYERS = len(client.board.players)
 PLAYER_ID = client.player_id
@@ -67,14 +67,14 @@ def load_image(path):
     return surf
 
 def pxPos(pos): #Return upper left px pos of tile (x,y). Tile index 1-9
-	position = [scale_factor*4,scale_factor*4]
-	position[0] += scale_factor*8*pos[0]
-	position[1] += scale_factor*8*pos[1]
+	position = [SCALE_FACTOR*4,SCALE_FACTOR*4]
+	position[0] += SCALE_FACTOR*8*pos[0]
+	position[1] += SCALE_FACTOR*8*pos[1]
 	return position
 
 def offset(pos,amount): # amount == (x,y), offset in blueprint pixels
-	pos[0] += amount[0]*scale_factor
-	pos[1] += amount[1]*scale_factor
+	pos[0] += amount[0]*SCALE_FACTOR
+	pos[1] += amount[1]*SCALE_FACTOR
 	return pos
 
 def invertY(pos):
@@ -82,25 +82,28 @@ def invertY(pos):
 	pos[1] = 8-pos[1]
 	return pos
 
-def scaleSprites(sprites,scale_factor): #Scale player sprites
+def scaleSprites(sprites): #Scale player sprites
 	for sprite in sprites:
-		sprite = pygame.transform.scale(sprite,(scale_factor*8,)*2)
+		sprite = pygame.transform.scale(sprite,(SCALE_FACTOR*8,)*2)
 	return sprites
 
-# PREPARE SPRITES
-board = load_image("Assets/board1.png")
-board = pygame.transform.scale(board,screensize)
-screen.blit(board,(0,0))
+def prepare_sprites():
+	global boardSprite_raw, playerSprites_raw, wallSprite_raw, highlightSprite_raw
 
-players = {0:(4,8), 1:(4,0), 2:(0,4), 3:(8,4)}  # ID:(x,y) x,y: 0-8
-playerSprites = [load_image("Assets/pawn%s.png" % n) for n in range(4)]
-playerSprites = scaleSprites(playerSprites,scale_factor)
+	boardSprite_raw = load_image("Assets/board1.png")
+	playerSprites_raw = [load_image("Assets/pawn%s.png" % n) for n in range(4)]
+	wallSprite_raw = load_image("Assets/wall1.png")
+	highlightSprite_raw = load_image("Assets/highlight1.png")
 
-walls = [[1,6,True],[4,3,False]] #Pos: 1-8, Bool(Vertical)
-wallSprite = load_image("Assets/wall1.png")
-wallSprite = pygame.transform.scale(wallSprite,(scale_factor*15,scale_factor))
+def scale_sprites():
+	global boardSprite, playerSprites, wallSprite, highlightSprite
+	boardSprite = pygame.transform.scale(boardSprite_raw,SCREENSIZE)
 
-highlightSprite = load_image("Assets/highlight1.png")
+	playerSprites = scaleSprites(playerSprites_raw,SCALE_FACTOR)
+
+	wallSprite = pygame.transform.scale(wallSprite_raw,(SCALE_FACTOR*15,SCALE_FACTOR))
+
+	highlightSprite = pygame.transform.scale(highlightSprite_raw,(SCALE_FACTOR*8,SCALE_FACTOR*8))
 
 
 def unpackPlayers(): #Excluding the goverment
@@ -117,13 +120,21 @@ def unpackWalls():
 	return walls
 
 def move(event):
-	pass
+	if event.key == pygame.K_UP:
+		client.doMove(b"gu")		
+	if event.key == pygame.K_DOWN:
+		client.doMove(b"gd")	
+	if event.key == pygame.K_LEFT:
+		client.doMove(b"gl")	
+	if event.key == pygame.K_RIGHT:
+		client.doMove(b"gr")
 
-while True:
-	if client.board.started():
-		break
-	time.sleep(0.5)
-	
+#while True:
+#	if client.board.started():
+#		break
+#	time.sleep(0.5)
+
+trigger_rescale = False
 while True:
 	#Listen to server -> Update
 	players = unpackPlayers()
@@ -136,19 +147,13 @@ while True:
 			print("Quitting Qommunist")
 			exit()
 		if event.type == pygame.VIDEORESIZE:
-			pass # IMPLEMENT
+			SCREENSIZE = event.dict['size']
+			SCALE_FACTOR=int(min(SCREENSIZE)/79)
+			screen = pygame.display.set_mode(SCREENSIZE, pygame.RESIZABLE)
+			trigger_rescale = True
+
 		if event.type == pygame.KEYDOWN:
-			if event.key == pygame.K_UP:
-				client.doMove(b"gu")
-				
-			if event.key == pygame.K_DOWN:
-				client.doMove(b"gd")
-				
-			if event.key == pygame.K_LEFT:
-				client.doMove(b"gl")
-				
-			if event.key == pygame.K_RIGHT:
-				client.doMove(b"gr")
+			move(event)
 
 	#Draw players
 	for i in range(len(players)):
@@ -173,12 +178,14 @@ while True:
 		pos = offset(pos,(0,0))
 		screen.blit(highlightSprite,pos)
 
-
+	if trigger_rescale:
+		trigger_rescale = False
+		scale_sprites()
 
 	if IS_GOVERNMENT:
 		pass
 
-	pygame.display.flip() #update(players, walls)
-	screen.blit(board,(0,0)) #Clear screen
+	pygame.display.flip()
+	screen.blit(board,(0,0))
 	time.sleep(0.01)
 
