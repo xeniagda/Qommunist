@@ -121,6 +121,34 @@ parsePlaceWall cmd = do
     (y, _) <- B.readInt restD
     return $ PlaceWall $ Wall (Vec2 (fromIntegral x) (fromIntegral y)) dir
 
+
+canPlaceWall :: Wall Integer -> Game -> Bool
+canPlaceWall (Wall (Vec2 x y) RightLeft) game =
+    let intersectingWalls =
+            filter (\ (Wall (Vec2 wx wy) dir) ->
+                case dir of
+                    UpDown ->
+                        wx == x && wy == y
+                    RightLeft ->
+                        wy == y
+                        &&
+                        wx >= x - 1 && wx <= x + 1
+            ) $ getWalls game
+    in intersectingWalls == []
+
+canPlaceWall (Wall (Vec2 x y) UpDown) game =
+    let intersectingWalls =
+            filter (\ (Wall (Vec2 wx wy) dir) ->
+                case dir of
+                    UpDown ->
+                        wx == x
+                        &&
+                        wy >= y - 1 && wy <= y + 1
+                    RightLeft ->
+                        wx == x && wy == y
+            ) $ getWalls game
+    in intersectingWalls == []
+
 canMove :: Vec2 Integer -> Vec2 Integer -> Game -> Bool
 canMove pos vel game =
     let intersecting = getIntersectingWalls pos vel game
@@ -142,11 +170,23 @@ getIntersectingWalls pos@(Vec2 x y) vel@(Vec2 dx dy) game =
 
 doMove :: Move -> Game -> (Game, Bool)
 doMove (PlaceWall wall) game =
-    let game' =
+    let canPlace = canPlaceWall wall game
+        game' =
             game {
-                getWalls = wall : getWalls game
+                getWalls = wall : getWalls game,
+                getPlayers =
+                    map (\player ->
+                        (<$ player) $
+                        case extract player of
+                            Government x -> Government $ x - 1
+                            PlayerPawn x y -> PlayerPawn x y
+                    )
+                    $ getPlayers game
             }
-    in (game', True)
+    in 
+        if canPlace
+            then (game', True)
+            else (game, False)
 
 doMove (PawnMove plIdx (Vec2 dx dy)) game =
     --if plIdx >= length (getPlayers game)
@@ -178,10 +218,7 @@ doMove (PawnMove plIdx (Vec2 dx dy)) game =
 
 makeGame size id =
     Game
-        { getWalls =
-            [ Wall (Vec2 1 2) UpDown
-            , Wall (Vec2 4 5) RightLeft
-            ]
+        { getWalls = [ ]
         , getSize = size
         , getPlayers =
             [ Waiting $ PlayerPawn
