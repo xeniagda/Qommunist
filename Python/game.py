@@ -17,16 +17,19 @@ Game Loop:
 	4. Walls
 	5. Reset
 
-	TODO: Inputs
+	TODO:	Fix move queue
+			Move pawn using mouse
+			Play as government / place walls
+			Windows padding, extra info
 """
 #DISPLAY SETUP
 pygame.init()
-scale_factor = 10
-screensize = width, hight = 79*scale_factor,79*scale_factor
-screen = pygame.display.set_mode(screensize, pygame.RESIZABLE)
+SCALE_FACTOR = 10
+SCREENSIZE = 79*SCALE_FACTOR,79*SCALE_FACTOR
+screen = pygame.display.set_mode(SCREENSIZE, pygame.RESIZABLE)
 
 #SERVER
-SERVER_HOST = "172.16.1.162" 
+SERVER_HOST = "localhost" #"172.16.1.162" 
 PORT = 1961
 ONLINE = True
 
@@ -46,7 +49,6 @@ if ONLINE:
 else:
 	games = [1]
 	client = None
-time.sleep(1)
 
 NUM_PLAYERS = len(client.board.players)
 PLAYER_ID = client.player_id
@@ -66,15 +68,20 @@ def load_image(path):
 
     return surf
 
-def pxPos(pos): #Return upper left px pos of tile (x,y). Tile index 1-9
-	position = [scale_factor*4,scale_factor*4]
-	position[0] += scale_factor*8*pos[0]
-	position[1] += scale_factor*8*pos[1]
+def posPx(pos): #Return upper left px pos of tile (x,y). Tile index 1-9
+	position = [SCALE_FACTOR*4,SCALE_FACTOR*4]
+	position[0] += SCALE_FACTOR*8*pos[0]
+	position[1] += SCALE_FACTOR*8*pos[1]
 	return position
 
+def pxPos(px):
+	position = list(map(lambda x: int(x/(8*SCALE_FACTOR)-4),px))
+	return position
+
+
 def offset(pos,amount): # amount == (x,y), offset in blueprint pixels
-	pos[0] += amount[0]*scale_factor
-	pos[1] += amount[1]*scale_factor
+	pos[0] += amount[0]*SCALE_FACTOR
+	pos[1] += amount[1]*SCALE_FACTOR
 	return pos
 
 def invertY(pos):
@@ -82,25 +89,30 @@ def invertY(pos):
 	pos[1] = 8-pos[1]
 	return pos
 
-def scaleSprites(sprites,scale_factor): #Scale player sprites
-	for sprite in sprites:
-		sprite = pygame.transform.scale(sprite,(scale_factor*8,)*2)
+def scalePlayers(sprites):
+	sprites = list(sprites)
+	for i in range(len(sprites)):
+		sprites[i] = pygame.transform.scale(sprites[i],(SCALE_FACTOR*6,)*2)
 	return sprites
 
-# PREPARE SPRITES
-board = load_image("Assets/board1.png")
-board = pygame.transform.scale(board,screensize)
-screen.blit(board,(0,0))
+def prepare_sprites():
+	global boardSprite_raw, playerSprites_raw, wallSprite_raw, highlightSprite_raw
 
-players = {0:(4,8), 1:(4,0), 2:(0,4), 3:(8,4)}  # ID:(x,y) x,y: 0-8
-playerSprites = [load_image("Assets/pawn%s.png" % n) for n in range(4)]
-playerSprites = scaleSprites(playerSprites,scale_factor)
+	boardSprite_raw = load_image("Assets/board1.png")
+	playerSprites_raw = [load_image("Assets/pawn%s.png" % n) for n in range(4)]
+	wallSprite_raw = load_image("Assets/wall1.png")
+	highlightSprite_raw = load_image("Assets/highlight1.png")
 
-walls = [[1,6,True],[4,3,False]] #Pos: 1-8, Bool(Vertical)
-wallSprite = load_image("Assets/wall1.png")
-wallSprite = pygame.transform.scale(wallSprite,(scale_factor*15,scale_factor))
+def scale_sprites():
+	global boardSprite, playerSprites, wallSprite, highlightSprite
+	x = SCALE_FACTOR
+	boardSprite = pygame.transform.scale(boardSprite_raw,(79*x,79*x))
 
-highlightSprite = load_image("Assets/highlight1.png")
+	playerSprites = scalePlayers(playerSprites_raw)
+
+	wallSprite = pygame.transform.scale(wallSprite_raw,(x*15,x))
+
+	highlightSprite = pygame.transform.scale(highlightSprite_raw,(x*7,x*7))
 
 
 def unpackPlayers(): #Excluding the goverment
@@ -117,13 +129,39 @@ def unpackWalls():
 	return walls
 
 def move(event):
-	pass
+	if event.key == pygame.K_UP:
+		client.doMove(b"gu")		
+	if event.key == pygame.K_DOWN:
+		client.doMove(b"gd")	
+	if event.key == pygame.K_LEFT:
+		client.doMove(b"gl")	
+	if event.key == pygame.K_RIGHT:
+		client.doMove(b"gr")
 
-while True:
-	if client.board.started():
-		break
-	time.sleep(0.5)
+def moveTo(tile):
+	direction = [0,0]
+	direction[0] = tile[0]-players[PLAYER_ID][0]
+	direction[1] = tile[1]-players[PLAYER_ID][1]
+	if direction == [0,1]:
+		client.doMove(b"gu")
+	if direction == [1,0]:
+		client.doMove(b"gr")
+	if direction == [0,-1]:
+		client.doMove(b"gd")
+	if direction == [-1,0]:
+		client.doMove(b"gl")
 	
+
+
+prepare_sprites()
+scale_sprites()
+
+#while True:
+#	if client.board.started():
+#		break
+#	time.sleep(0.5)
+
+trigger_rescale = False
 while True:
 	#Listen to server -> Update
 	players = unpackPlayers()
@@ -136,49 +174,51 @@ while True:
 			print("Quitting Qommunist")
 			exit()
 		if event.type == pygame.VIDEORESIZE:
-			pass # IMPLEMENT
-		if event.type == pygame.KEYDOWN:
-			if event.key == pygame.K_UP:
-				client.doMove(b"gu")
-				
-			if event.key == pygame.K_DOWN:
-				client.doMove(b"gd")
-				
-			if event.key == pygame.K_LEFT:
-				client.doMove(b"gl")
-				
-			if event.key == pygame.K_RIGHT:
-				client.doMove(b"gr")
+			SCREENSIZE = event.dict['size']
+			SCALE_FACTOR=int(min(SCREENSIZE)/79)
+			screen = pygame.display.set_mode(SCREENSIZE, pygame.RESIZABLE)
+			trigger_rescale = True
+
+		if event.type == pygame.KEYDOWN and turn == PLAYER_ID:
+			move(event)
+
+		if event.type == pygame.MOUSEBUTTONUP:
+			pos = pxPos(pygame.mouse.get_pos())
+			moveTo(pos)
 
 	#Draw players
 	for i in range(len(players)):
-		pos = pxPos(players[i])
+		pos = posPx(players[i])
 		pos = offset(pos,(0.5,0.5)) #Adjust from top left corner.
 		screen.blit(playerSprites[i],pos)
 
 	#Draw walls
 	for x,y,vertical in walls:
-		pos = pxPos((x,y))
-		wSprite = wallSprite
+		pos = posPx((x,y))
+		localSprite = wallSprite
 		if vertical:
-			wSprite = pygame.transform.rotate(wSprite,90)
+			localSprite = pygame.transform.rotate(localSprite,90)
 			pos = offset(pos,(-1,0))
 		else:
 			pos = offset(pos,(-8,7))
-		screen.blit(wSprite,pos)
+		screen.blit(localSprite,pos)
 
 	#Draw details
 	if turn in range(NUM_PLAYERS): # Draw highlight
-		pos = pxPos(players[turn])
+		pos = posPx(players[turn])
 		pos = offset(pos,(0,0))
 		screen.blit(highlightSprite,pos)
 
-
+	if trigger_rescale:
+		trigger_rescale = False
+		scale_sprites()
 
 	if IS_GOVERNMENT:
 		pass
 
-	pygame.display.flip() #update(players, walls)
-	screen.blit(board,(0,0)) #Clear screen
+	pygame.display.set_caption("You are player %s, it's player %s's turn" % (PLAYER_ID+1,turn+1))
+
+	pygame.display.flip()
+	screen.blit(boardSprite,(0,0))
 	time.sleep(0.01)
 
