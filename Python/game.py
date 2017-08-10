@@ -17,13 +17,13 @@ Game Loop:
 	4. Walls
 	5. Reset
 
-	TODO:	Move pawn using mouse
-			Play as government / place walls
-			Windows padding, extra info
+	TODO:	Play as government / place walls
+			Window padding, extra info
+			Launcher?
 """
 #DISPLAY SETUP
 pygame.init()
-SCALE_FACTOR = 10
+SCALE_FACTOR = 9
 SCREENSIZE = 79*SCALE_FACTOR,79*SCALE_FACTOR
 screen = pygame.display.set_mode(SCREENSIZE, pygame.RESIZABLE)
 
@@ -72,8 +72,9 @@ def posPx(pos): #Return upper left px pos of tile (x,y). Tile index 1-9
 	position[1] += SCALE_FACTOR*8*pos[1]
 	return position
 
-def pxPos(px):
-	position = list(map(lambda x: int(x/(8*SCALE_FACTOR)-4),px))
+def pxPos(px): # Returns what tile a certain pixel is in.
+	position = list(map(lambda x: (x-4*SCALE_FACTOR),px))
+	position = list(map(lambda x: int(x/(8*SCALE_FACTOR)),position))
 	return position
 
 
@@ -141,11 +142,11 @@ def moveTo(tile):
 	direction[0] = tile[0]-players[client.player_id][0]
 	direction[1] = tile[1]-players[client.player_id][1]
 	if direction == [0,1]:
-		client.doMove(b"gu")
+		client.doMove(b"gd")
 	if direction == [1,0]:
 		client.doMove(b"gr")
 	if direction == [0,-1]:
-		client.doMove(b"gd")
+		client.doMove(b"gu")
 	if direction == [-1,0]:
 		client.doMove(b"gl")
 	
@@ -180,7 +181,7 @@ while True:
 		if event.type == pygame.KEYDOWN and turn == client.player_id:
 			move(event)
 
-		if event.type == pygame.MOUSEBUTTONUP:
+		if event.type == pygame.MOUSEBUTTONUP and turn == client.player_id:
 			pos = pxPos(pygame.mouse.get_pos())
 			moveTo(pos)
 
