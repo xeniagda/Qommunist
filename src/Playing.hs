@@ -57,7 +57,7 @@ clientLoop games gameId client@(Client ip tPings tRecv tSend) = do
                     let winner = getWinner game
                         state' = case winner of
                             NoWin -> state
-                            _ -> Won game
+                            _ -> Won (makeGame 0 0)
 
                     newState <- handleStep games gameId client state'
                     case newState of

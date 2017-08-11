@@ -7,6 +7,7 @@ import Control.Concurrent
 import Control.Concurrent.STM
 import Control.Concurrent.STM.TVar
 
+import Data.Maybe
 import qualified Data.ByteString.Char8 as B
 import Network.Socket hiding (send, sendTo, recv, recvFrom)
 import Network.Socket.ByteString
@@ -74,6 +75,7 @@ data Winner
     = NoWin
     | GovWin
     | PawnWin
+    deriving (Show, Eq)
 
 data Game =
     Game
@@ -100,10 +102,27 @@ getWinner :: Game -> Winner
 getWinner game =
     let gov = getGov game
     in case extract gov of
-            Government 0 -> PawnWin
-            _ -> case getWinningPlayers game /= [] of
-                True -> PawnWin
-                False -> NoWin
+        Government 0 -> PawnWin
+        _ -> case getWinnablePlayers game of
+            [] -> GovWin
+            _ ->
+                case getWinningPlayers game of
+                    [] -> NoWin
+                    a -> PawnWin
+
+getWinnablePlayers game =
+    filter (\player ->
+        case extract player of
+            PlayerPawn pos edge ->
+                let cond (Vec2 x y) =
+                        case edge of
+                            Right -> x >= getSize game
+                            Left -> x <= 0
+                            Up -> y >= getSize game
+                            Down -> y <= 0
+                in canReach pos cond game
+            _ -> False
+    ) $ getPlayers game
 
 getGov :: Game -> NetPlayer (Player Integer)
 getGov game =
@@ -158,6 +177,35 @@ parsePlaceWall cmd = do
     (y, _) <- B.readInt restD
     return $ PlaceWall $ Wall (Vec2 (fromIntegral x) (fromIntegral y)) dir
 
+canReach :: Vec2 Integer -> (Vec2 Integer -> Bool) -> Game -> Bool
+canReach start cond game =
+    snd $ visit start cond [] game
+
+visit :: Vec2 Integer -> (Vec2 Integer -> Bool) -> [Vec2 Integer] -> Game -> ([Vec2 Integer], Bool)
+visit pos cond visited game =
+    if cond pos
+        then ([pos], True)
+        else
+            let around = 
+                    mapMaybe (\ d ->
+                        if canMove pos d game
+                            then
+                                let res = (+) <$> pos <*> d
+                                in
+                                    if res `elem` visited
+                                        then Nothing
+                                        else Just res
+                            else Nothing
+                    ) [Vec2 0 1, Vec2 1 0, Vec2 (-1) 0, Vec2 0 (-1)]
+                visited' = visited ++ around
+            in 
+                foldl (\ (vis, reached) posCheck ->
+                    case reached of
+                        True -> (vis, True)
+                        False -> visit posCheck cond vis game
+                ) (visited', False) around
+                        
+
 
 canPlaceWall :: Wall Integer -> Game -> Bool
 canPlaceWall (Wall (Vec2 x y) RightLeft) game =
@@ -173,7 +221,7 @@ canPlaceWall (Wall (Vec2 x y) RightLeft) game =
             ) $ getWalls game
     in intersectingWalls == []
         && x > 0 && y > 0
-        && x <= getSize game && x < getSize game
+        && x <= getSize game && y <= getSize game
 
 canPlaceWall (Wall (Vec2 x y) UpDown) game =
     let intersectingWalls =
@@ -188,7 +236,7 @@ canPlaceWall (Wall (Vec2 x y) UpDown) game =
             ) $ getWalls game
     in intersectingWalls == []
         && x > 0 && y > 0
-        && x <= getSize game && x < getSize game
+        && x <= getSize game && y <= getSize game
 
 canMove :: Vec2 Integer -> Vec2 Integer -> Game -> Bool
 canMove pos@(Vec2 x y) vel@(Vec2 dx dy) game =
@@ -262,7 +310,13 @@ doMove (PawnMove plIdx (Vec2 dx dy)) game =
 
 makeGame size id =
     Game
-        { getWalls = [ ]
+        { getWalls = 
+            [ Wall (Vec2 1 1) RightLeft
+            , Wall (Vec2 3 1) RightLeft
+            , Wall (Vec2 5 1) RightLeft
+            , Wall (Vec2 7 1) RightLeft
+            -- , Wall (Vec2 9 1) RightLeft
+            ]
         , getSize = size
         , getPlayers =
             [ Waiting $ PlayerPawn
