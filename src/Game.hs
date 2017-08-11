@@ -172,6 +172,8 @@ canPlaceWall (Wall (Vec2 x y) RightLeft) game =
                         wx >= x - 1 && wx <= x + 1
             ) $ getWalls game
     in intersectingWalls == []
+        && x > 0 && y > 0
+        && x <= getSize game && x < getSize game
 
 canPlaceWall (Wall (Vec2 x y) UpDown) game =
     let intersectingWalls =
@@ -185,11 +187,16 @@ canPlaceWall (Wall (Vec2 x y) UpDown) game =
                         wx == x && wy == y
             ) $ getWalls game
     in intersectingWalls == []
+        && x > 0 && y > 0
+        && x <= getSize game && x < getSize game
 
 canMove :: Vec2 Integer -> Vec2 Integer -> Game -> Bool
-canMove pos vel game =
+canMove pos@(Vec2 x y) vel@(Vec2 dx dy) game =
     let intersecting = getIntersectingWalls pos vel game
-    in length intersecting == 0
+        inBounds =
+                x + dx >= 0 && y + dy >= 0
+            &&  x + dx <= getSize game && y + dy <= getSize game
+    in inBounds && length intersecting == 0
 
 getIntersectingWalls :: Vec2 Integer -> Vec2 Integer -> Game -> [Wall Integer]
 getIntersectingWalls pos@(Vec2 x y) vel@(Vec2 dx dy) game =

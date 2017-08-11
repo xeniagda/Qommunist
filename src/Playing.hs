@@ -45,16 +45,21 @@ clientLoop games gameId client@(Client ip tPings tRecv tSend) = do
                     putStrLn "Something went very wrong. PlayerId == -1"
                     cSend client $ B.pack "EXIT something went wrong"
                 else return ()
-
+    
             pings <- readTVarIO tPings
             stillIn <- checkPings games game pings playerId
 
-            when (pings > 2 && showDroppedPings) $ do
+            when (pings > 5 && showDroppedPings) $ do
                 putStrLn $ show client ++ " has " ++ show pings ++ " dropped pings"
 
             if stillIn 
                 then do
-                    newState <- handleStep games gameId client state
+                    let winner = getWinner game
+                        state' = case winner of
+                            NoWin -> state
+                            _ -> Won game
+
+                    newState <- handleStep games gameId client state'
                     case newState of
                         Just st -> clientLoopState st
                         Nothing -> return ()
@@ -149,6 +154,15 @@ handleStep games gameId client@(Client ip tPings tRecv tSend) (Playing lastGame)
                     
                     return $ Just $ Playing game
 
+handleStep games gameId client@(Client ip tPings tRecv tSend) state@(Won lastGame) = do
+    game <- fromJust <$> getGame' games gameId
+    if game /= lastGame
+        then cSendLn client $ encodeGame game
+        else return ()
+
+    return $ Just $ Won game
+
 data GameState
     = WaitingForPlayers Int
     | Playing Game -- Last game
+    | Won Game

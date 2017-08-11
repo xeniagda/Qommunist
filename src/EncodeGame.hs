@@ -15,6 +15,10 @@ encodeGame game =
         , encodePlayers $ getPlayers game
         , B.pack $ show $ getPlayerTurn game
         , B.pack $ show $ getId game
+        , B.pack $ case getWinner game of
+            NoWin -> "n"
+            GovWin -> "g"
+            PawnWin -> "p"
         ]
 
 encodeWalls :: (Show a) => [Wall a] -> B.ByteString

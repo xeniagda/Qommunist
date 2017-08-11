@@ -5,7 +5,7 @@ import time
 VERBOSE_NET = True
 
 class Board:
-    def __init__(self, size, walls, players, turn, b_id):
+    def __init__(self, size, walls, players, turn, b_id, winner):
         self.size = size        # Int
         self.walls = walls      # [(x, y, Horz/Vert)]
         self.players = players  # [(connected, x, y)]
@@ -13,19 +13,20 @@ class Board:
         self.govern_bricks_left = 0
         self.turn = turn        # Int
         self.b_id = b_id        # Int
+        self.winner = winner    # 0 = No win, 1 = Government win, 2 = Pawns win
 
     def started(self):
         return all(map(lambda pl: pl[0], self.players)) and self.govern_connected and self.players != []
 
     def __str__(self):
-        return "Board(size=%s, walls=%s, players=%s, govern=%s, turn=%s, b_id=%s, started=%s)" % (
+        return "Board(size=%s, walls=%s, players=%s, govern=%s, turn=%s, b_id=%s, winner=%s)" % (
                 self.size,
                 self.walls,
                 self.players,
                 self.govern_bricks_left if self.govern_connected else "nope",
                 self.turn,
                 self.b_id,
-                self.started(),
+                ["no one", "gov", "pawns"][self.winner]
         )
 
 class LineIterator:
@@ -57,7 +58,7 @@ class Client:
         self.socket = socket.socket(family=socket.AF_INET, type=socket.SOCK_STREAM)
         self.socket.connect((server_host, port))
 
-        self.board = Board(8, [], [], 0, -1)
+        self.board = Board(8, [], [], 0, -1, 0)
         self.player_id = -1
 
         self.rec_lines = LineIterator()
@@ -112,7 +113,7 @@ class Client:
 
         board_encoded = self.rec_lines.wait()
 
-        [size, walls, players, turn, b_id] = board_encoded.split(";")
+        [size, walls, players, turn, b_id, winner] = board_encoded.split(";")
 
         self.board.size = int(size)
         self.board.turn = int(turn)
@@ -140,6 +141,8 @@ class Client:
                         int(things[3]),
                     )
                 )
+
+        self.board.winner = "ngp".index(winner)
 
     def __str__(self):
         return "Player(id=%s, board=%s)" % (self.player_id, self.board)
@@ -176,7 +179,6 @@ if __name__ == "__main__":
 
     while True:
         print(client)
-        print("Started:", client.board.started())
         if client.myTurn():
             print("My turn!")
             todo = input("What to do? ")
