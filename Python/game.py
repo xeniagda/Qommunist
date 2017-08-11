@@ -132,7 +132,7 @@ def unpackWalls():
 	walls = list(map(invertY,walls))
 	return walls
 
-def move(event): # Fix for government
+def move(event):
 	if IS_GOVERNMENT:
 		if event.key == pygame.K_UP:
 			ghost[1] += -1		
@@ -153,19 +153,13 @@ def move(event): # Fix for government
 			client.doMove(b"gr")
 
 def moveTo(tile):
-	direction = [0,0]
-	direction[0] = tile[0]-players[client.player_id][0]
-	direction[1] = tile[1]-players[client.player_id][1]
 	if IS_GOVERNMENT:
-		if direction == [0,1]:
-			ghost[1] += 1
-		if direction == [1,0]:
-			ghost[0] += 1
-		if direction == [0,-1]:
-			ghost[1] += -1
-		if direction == [-1,0]:
-			ghost[0] += -1
+		ghost = (tile[0],tile[1])
 	else:
+		direction = [0,0]
+		direction[0] = tile[0]-players[client.player_id][0]
+		direction[1] = tile[1]-players[client.player_id][1]
+
 		if direction == [0,1]:
 			client.doMove(b"gd")
 		if direction == [1,0]:
@@ -175,19 +169,8 @@ def moveTo(tile):
 		if direction == [-1,0]:
 			client.doMove(b"gl")
 	
-<<<<<<< HEAD
 if IS_GOVERNMENT:
-	ghost = (0,0,True) # Vertical?
-=======
-# REMOVE!!!
-def debug():
-    while True:
-        print(str(client.board))
-        time.sleep(1)
-
-import threading
-threading.Thread(target=debug, daemon=True).start()
->>>>>>> c7e56f97e7db22827a7a855093940a58c94fd13a
+	ghost = [0,0,True] # Vertical?
 
 prepare_sprites()
 scale_sprites()
@@ -255,6 +238,8 @@ while True:
 		scale_sprites()
 
 	if IS_GOVERNMENT and turn == client.player_id:
+		ghost = [max(ghost[0], 0), max(ghost[1], 0)] #Keeps ghost within board
+		ghost = [min(ghost[0], 8), min(ghost[1], 8)]
 		pos = posPx(ghost)
 		localSprite = ghostSprite
 		if ghost[2]: # Is vertical?
