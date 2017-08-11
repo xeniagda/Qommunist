@@ -6,5 +6,5 @@ if [[ $? != 0 ]] ; then
 fi
 
 STACK_PATH=$(stack path --local-install-root)
-cp "$STACK_PATH/bin/Qommunist-exe" .
+cp "$STACK_PATH/bin/Qommunist-exe" "Execs/Qommunist-$(uname)"
 stack exec Qommunist-exe
