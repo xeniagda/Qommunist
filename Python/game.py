@@ -259,6 +259,6 @@ while True:
 
 
 	pygame.display.flip()
-	pygame.display.fill((0,0,0))
+	screen.fill((0,0,0))
 	time.sleep(0.01)
 
