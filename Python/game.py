@@ -101,6 +101,8 @@ def prepare_sprites():
 	playerSprites_raw = [load_image("Assets/pawn%s.png" % n) for n in range(4)]
 	wallSprite_raw = load_image("Assets/wall1.png")
 	highlightSprite_raw = load_image("Assets/highlight1.png")
+	if IS_GOVERNMENT:
+		ghostSprite_raw = load_image("ghost1")
 
 def scale_sprites():
 	global boardSprite, playerSprites, wallSprite, highlightSprite
@@ -112,6 +114,9 @@ def scale_sprites():
 	wallSprite = pygame.transform.scale(wallSprite_raw,(x*15,x))
 
 	highlightSprite = pygame.transform.scale(highlightSprite_raw,(x*7,x*7))
+
+	if IS_GOVERNMENT:
+		ghostSprite = pygame.transform.scale(ghostSprite_raw,(x*15,x))
 
 
 def unpackPlayers(): #Excluding the goverment
@@ -127,30 +132,51 @@ def unpackWalls():
 	walls = list(map(invertY,walls))
 	return walls
 
-def move(event):
-	if event.key == pygame.K_UP:
-		client.doMove(b"gu")		
-	if event.key == pygame.K_DOWN:
-		client.doMove(b"gd")	
-	if event.key == pygame.K_LEFT:
-		client.doMove(b"gl")	
-	if event.key == pygame.K_RIGHT:
-		client.doMove(b"gr")
+def move(event): # Fix for government
+	if IS_GOVERNMENT:
+		if event.key == pygame.K_UP:
+			ghost[1] += -1		
+		if event.key == pygame.K_DOWN:
+			ghost[1] += 1
+		if event.key == pygame.K_LEFT:
+			ghost[0] += -1
+		if event.key == pygame.K_RIGHT:
+			ghost[0] += 1
+	else:
+		if event.key == pygame.K_UP:
+			client.doMove(b"gu")		
+		if event.key == pygame.K_DOWN:
+			client.doMove(b"gd")	
+		if event.key == pygame.K_LEFT:
+			client.doMove(b"gl")	
+		if event.key == pygame.K_RIGHT:
+			client.doMove(b"gr")
 
 def moveTo(tile):
 	direction = [0,0]
 	direction[0] = tile[0]-players[client.player_id][0]
 	direction[1] = tile[1]-players[client.player_id][1]
-	if direction == [0,1]:
-		client.doMove(b"gd")
-	if direction == [1,0]:
-		client.doMove(b"gr")
-	if direction == [0,-1]:
-		client.doMove(b"gu")
-	if direction == [-1,0]:
-		client.doMove(b"gl")
+	if IS_GOVERNMENT:
+		if direction == [0,1]:
+			ghost[1] += 1
+		if direction == [1,0]:
+			ghost[0] += 1
+		if direction == [0,-1]:
+			ghost[1] += -1
+		if direction == [-1,0]:
+			ghost[0] += -1
+	else:
+		if direction == [0,1]:
+			client.doMove(b"gd")
+		if direction == [1,0]:
+			client.doMove(b"gr")
+		if direction == [0,-1]:
+			client.doMove(b"gu")
+		if direction == [-1,0]:
+			client.doMove(b"gl")
 	
-
+if IS_GOVERNMENT:
+	ghost = (0,0,True) # Vertical?
 
 prepare_sprites()
 scale_sprites()
@@ -185,6 +211,11 @@ while True:
 			pos = pxPos(pygame.mouse.get_pos())
 			moveTo(pos)
 
+		if (event.type == pygame.KEYDOWN and event.key == pygame.K_RETURN and turn == client.player_id and IS_GOVERNMENT):
+
+			direction = ["u" if ghost[2] else "r"]
+			client.doMove(b"p{}{}{}".format(ghost[0],direction[0],ghost[1]))
+
 	#Draw players
 	for i in range(len(players)):
 		pos = posPx(players[i])
@@ -212,8 +243,16 @@ while True:
 		trigger_rescale = False
 		scale_sprites()
 
-	if IS_GOVERNMENT:
-		pass
+	if IS_GOVERNMENT and turn == client.player_id:
+		pos = posPx(ghost)
+		localSprite = ghostSprite
+		if ghost[2]: # Is vertical?
+			localSprite = pygame.transform.rotate(localSprite,90)
+			pos = offset(pos,(-1,0))
+		else:
+			pos = offset(pos,(-8,7))
+		screen.blit(localSprite,pos)
+
 
 	pygame.display.set_caption("You are player %s, it's player %s's turn" % (client.player_id+1,turn+1))
 
