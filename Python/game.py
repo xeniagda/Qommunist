@@ -17,7 +17,7 @@ Game Loop:
 	4. Walls
 	5. Reset
 
-	TODO:	Play as government / place walls
+	TODO:	Place walls using mouse
 			Window padding, extra info
 			Launcher?
 """
@@ -72,9 +72,13 @@ def posPx(pos): #Return upper left px pos of tile (x,y). Tile index 1-9
 	position[1] += SCALE_FACTOR*8*pos[1]
 	return position
 
-def pxPos(px): # Returns what tile a certain pixel is in.
+def pxPos(px,rounding=False): # Returns what tile a certain pixel is in.
 	position = list(map(lambda x: (x-4*SCALE_FACTOR),px))
-	position = list(map(lambda x: int(x/(8*SCALE_FACTOR)),position))
+	if rounding:
+		position = list(map(lambda x: round(x/(8*SCALE_FACTOR)),position))
+	else:
+		position = list(map(lambda x: int(x/(8*SCALE_FACTOR)),position))
+
 	return position
 
 
@@ -95,17 +99,19 @@ def scalePlayers(sprites):
 	return sprites
 
 def prepare_sprites():
-	global boardSprite_raw, playerSprites_raw, wallSprite_raw, highlightSprite_raw, ghostSprite_raw
+	global boardSprite_raw, playerSprites_raw, wallSprite_raw, highlightSprite_raw, ghostSprite_raw, winSprite_raw, looseSprite_raw
 
 	boardSprite_raw = load_image("Assets/board1.png")
 	playerSprites_raw = [load_image("Assets/pawn%s.png" % n) for n in range(4)]
 	wallSprite_raw = load_image("Assets/wall1.png")
 	highlightSprite_raw = load_image("Assets/highlight1.png")
+	winSprite_raw = load_image("Assets/winScreen1.png")
+	looseSprite_raw = load_image("Assets/looseScreen1.png")
 	if IS_GOVERNMENT:
 		ghostSprite_raw = load_image("Assets/ghost1.png")
 
 def scale_sprites():
-	global boardSprite, playerSprites, wallSprite, highlightSprite, ghostSprite
+	global boardSprite, playerSprites, wallSprite, highlightSprite, ghostSprite, winSprite, looseSprite
 	x = SCALE_FACTOR
 	boardSprite = pygame.transform.scale(boardSprite_raw,(79*x,79*x))
 
@@ -114,6 +120,9 @@ def scale_sprites():
 	wallSprite = pygame.transform.scale(wallSprite_raw,(x*15,x))
 
 	highlightSprite = pygame.transform.scale(highlightSprite_raw,(x*7,x*7))
+
+	winSprite = pygame.transform.scale(winSprite_raw,(79*x,79*x))
+	looseSprite = pygame.transform.scale(looseSprite_raw,(79*x,79*x))
 
 	if IS_GOVERNMENT:
 		ghostSprite = pygame.transform.scale(ghostSprite_raw,(x*15,x))
@@ -154,7 +163,8 @@ def move(event):
 
 def moveTo(tile):
 	if IS_GOVERNMENT:
-		ghost = (tile[0],tile[1])
+		global ghost
+		ghost = [tile[0],tile[1],ghost[2]]
 	else:
 		direction = [0,0]
 		direction[0] = tile[0]-players[client.player_id][0]
@@ -203,7 +213,7 @@ while True:
 			move(event)
 
 		if event.type == pygame.MOUSEBUTTONUP and turn == client.player_id:
-			pos = pxPos(pygame.mouse.get_pos())
+			pos = pxPos(pygame.mouse.get_pos(),IS_GOVERNMENT)
 			moveTo(pos)
 
 		if (event.type == pygame.KEYDOWN and event.key == pygame.K_RETURN and turn == client.player_id and IS_GOVERNMENT):
@@ -213,7 +223,7 @@ while True:
 			client.doMove(bytes(data, "ascii")) 
 
 		if (event.type == pygame.KEYDOWN and event.key == pygame.K_SPACE and turn == client.player_id and IS_GOVERNMENT):
-			ghost[2] = not ghost[2]
+			ghost[2] = not ghost[2] # Turn wall
 
 	#Draw players
 	for i in range(len(players)):
@@ -253,6 +263,15 @@ while True:
 		else:
 			pos = offset(pos,(-8,7))
 		screen.blit(localSprite,pos)
+
+	if client.board.winner != 0:
+		if IS_GOVERNMENT == (client.board.winner == 1):
+			screen.blit(winSprite,(0,0))
+		else:
+			screen.blit(looseSprite,(0,0))
+		while True:
+			for event in pygame.event.get():
+				pass
 
 
 	pygame.display.set_caption("You are player %s, it's player %s's turn" % (client.player_id+1,turn+1))
