@@ -36,7 +36,7 @@ encodePlayers players =
     B.intercalate (B.pack ",") $ map encodeNetPlayer players
 
 encodeNetPlayer :: (Show a) => NetPlayer (Player a) -> B.ByteString
-encodeNetPlayer (NetPlayer pl (Client _ ip)) =
+encodeNetPlayer (NetPlayer pl (Client ip _ _ _)) =
     B.intercalate (B.pack " ")
         [ B.pack "n"
         , encodePlayer pl

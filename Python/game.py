@@ -175,8 +175,19 @@ def moveTo(tile):
 		if direction == [-1,0]:
 			client.doMove(b"gl")
 	
+<<<<<<< HEAD
 if IS_GOVERNMENT:
 	ghost = (0,0,True) # Vertical?
+=======
+# REMOVE!!!
+def debug():
+    while True:
+        print(str(client.board))
+        time.sleep(1)
+
+import threading
+threading.Thread(target=debug, daemon=True).start()
+>>>>>>> c7e56f97e7db22827a7a855093940a58c94fd13a
 
 prepare_sprites()
 scale_sprites()

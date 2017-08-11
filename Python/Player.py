@@ -73,7 +73,9 @@ class Client:
             while "\n" in read:
                 line_length = read.find("\n")
                 line = read[:line_length]
-                if line != "":
+                if line == "ping":
+                    self.socket.send(b"pong\n")
+                elif line != "":
                     print(">", line)
                     self.rec_lines.send(line)
                 read = read[line_length+1:]

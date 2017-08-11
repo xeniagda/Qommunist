@@ -14,14 +14,14 @@ import Network.Socket.ByteString
 import Vec
 import Base
 
+pingLimit = 10
+
 -- Standard vector direction is:
 --  +x -> Right
 --  -x -> Left
 --  +y -> Up
 --  -y -> Down
 
-second :: Int
-second = 1000 * 1000
 defaultSize = 8
 
 data Wall a =
@@ -52,6 +52,10 @@ data NetPlayer a
     | Waiting a
     deriving (Show, Eq)
 
+-- extract unwraps a player,
+-- You can use (<$ player)
+-- to put it back in context
+
 extract (NetPlayer a _) = a
 extract (Waiting a) = a
 
@@ -66,6 +70,10 @@ instance Applicative NetPlayer where
     Waiting f <*> NetPlayer x cl = NetPlayer (f x) cl
     NetPlayer f cl <*> NetPlayer x _ = NetPlayer (f x) cl
 
+data Winner
+    = NoWin
+    | GovWin
+    | PawnWin
 
 data Game =
     Game
@@ -76,6 +84,35 @@ data Game =
         , getId :: Int
         }
     deriving (Show, Eq)
+
+getWinningPlayers game =
+    filter (\pawn -> case extract pawn of
+        PlayerPawn (Vec2 x y) edge ->
+            case edge of
+                Right -> x == getSize game - 1
+                Left -> x == 0
+                Up -> y == getSize game - 1
+                Down -> y == 0
+        _ -> False
+    ) $ getPlayers game
+
+getWinner :: Game -> Winner
+getWinner game =
+    let gov = getGov game
+    in case extract gov of
+            Government 0 -> PawnWin
+            _ -> case getWinningPlayers game /= [] of
+                True -> PawnWin
+                False -> NoWin
+
+getGov :: Game -> NetPlayer (Player Integer)
+getGov game =
+    let govs = filter 
+            (\x -> case extract x of
+                Government _ -> True
+                _ -> False
+            ) $ getPlayers game
+    in head govs
 
 data Move
     = PawnMove Int (Vec2 Integer)
@@ -310,3 +347,20 @@ getNextId games =
                 then check $ n + 1
                 else n
     in check 1
+
+checkPings :: TVar [Game] -> Game -> Int -> Int -> IO Bool
+checkPings games game pings playerId = do
+    if pings > pingLimit
+        then do -- Disconnect player
+            let gameWithoutPlayer =
+                    game {
+                        getPlayers =
+                            setAt
+                                (getPlayers game)
+                                playerId
+                                (Waiting $ extract (getPlayers game !! playerId))
+                    }
+            update' games gameWithoutPlayer
+            return False
+        else
+            return True
