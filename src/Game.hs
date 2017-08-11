@@ -14,6 +14,8 @@ import Network.Socket.ByteString
 import Vec
 import Base
 
+pingLimit = 10
+
 -- Standard vector direction is:
 --  +x -> Right
 --  -x -> Left
@@ -345,3 +347,20 @@ getNextId games =
                 then check $ n + 1
                 else n
     in check 1
+
+checkPings :: TVar [Game] -> Game -> Int -> Int -> IO Bool
+checkPings games game pings playerId = do
+    if pings > pingLimit
+        then do -- Disconnect player
+            let gameWithoutPlayer =
+                    game {
+                        getPlayers =
+                            setAt
+                                (getPlayers game)
+                                playerId
+                                (Waiting $ extract (getPlayers game !! playerId))
+                    }
+            update' games gameWithoutPlayer
+            return False
+        else
+            return True

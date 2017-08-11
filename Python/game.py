@@ -150,7 +150,14 @@ def moveTo(tile):
 	if direction == [-1,0]:
 		client.doMove(b"gl")
 	
+# REMOVE!!!
+def debug():
+    while True:
+        print(str(client.board))
+        time.sleep(1)
 
+import threading
+threading.Thread(target=debug, daemon=True).start()
 
 prepare_sprites()
 scale_sprites()
