@@ -71,7 +71,7 @@ communicate games client@(Client ip pigns tSend tRecv) = do
 
             atomically $ modifyTVar games (game:)
 
-            clientLoop games (getId game) client (WaitingForPlayers 0)
+            clientLoop games (getId game) client
 
         Just gameId' -> do
             game'' <- getGame' games gameId'
@@ -93,4 +93,4 @@ communicate games client@(Client ip pigns tSend tRecv) = do
 
                             update' games game
 
-                            clientLoop games gameId' client (WaitingForPlayers 0)
+                            clientLoop games gameId' client

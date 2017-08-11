@@ -18,13 +18,14 @@ class Board:
         return all(map(lambda pl: pl[0], self.players)) and self.govern_connected and self.players != []
 
     def __str__(self):
-        return "Board(size=%s, walls=%s, players=%s, govern=%s, turn=%s, b_id=%s)" % (
+        return "Board(size=%s, walls=%s, players=%s, govern=%s, turn=%s, b_id=%s, started=%s)" % (
                 self.size,
                 self.walls,
                 self.players,
                 self.govern_bricks_left if self.govern_connected else "nope",
                 self.turn,
-                self.b_id
+                self.b_id,
+                self.started(),
         )
 
 class LineIterator:
@@ -175,6 +176,7 @@ if __name__ == "__main__":
 
     while True:
         print(client)
+        print("Started:", client.board.started())
         if client.myTurn():
             print("My turn!")
             todo = input("What to do? ")
