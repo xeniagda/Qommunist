@@ -269,9 +269,6 @@ while True:
 			screen.blit(winSprite,(0,0))
 		else:
 			screen.blit(looseSprite,(0,0))
-		while True:
-			for event in pygame.event.get():
-				pass
 
 
 	pygame.display.set_caption("You are player %s, it's player %s's turn" % (client.player_id+1,turn+1))
