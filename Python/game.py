@@ -48,9 +48,9 @@ if ONLINE:
 else:
 	games = [1]
 	client = None
-
+time.sleep(0.5)
 NUM_PLAYERS = len(client.board.players)
-IS_GOVERNMENT = (client.player_id > NUM_PLAYERS)
+IS_GOVERNMENT = (client.player_id >= NUM_PLAYERS)
 
 # SPRITE FUNCTIONS
 def load_image(path):
@@ -95,17 +95,17 @@ def scalePlayers(sprites):
 	return sprites
 
 def prepare_sprites():
-	global boardSprite_raw, playerSprites_raw, wallSprite_raw, highlightSprite_raw
+	global boardSprite_raw, playerSprites_raw, wallSprite_raw, highlightSprite_raw, ghostSprite_raw
 
 	boardSprite_raw = load_image("Assets/board1.png")
 	playerSprites_raw = [load_image("Assets/pawn%s.png" % n) for n in range(4)]
 	wallSprite_raw = load_image("Assets/wall1.png")
 	highlightSprite_raw = load_image("Assets/highlight1.png")
 	if IS_GOVERNMENT:
-		ghostSprite_raw = load_image("ghost1")
+		ghostSprite_raw = load_image("Assets/ghost1.png")
 
 def scale_sprites():
-	global boardSprite, playerSprites, wallSprite, highlightSprite
+	global boardSprite, playerSprites, wallSprite, highlightSprite, ghostSprite
 	x = SCALE_FACTOR
 	boardSprite = pygame.transform.scale(boardSprite_raw,(79*x,79*x))
 
@@ -187,6 +187,7 @@ while True:
 	walls = unpackWalls()
 	turn = client.board.turn # Whos turn?
 
+	screen.blit(boardSprite,(0,0))
 	#Listen to events
 	for event in pygame.event.get():
 		if event.type == pygame.QUIT:
@@ -208,7 +209,11 @@ while True:
 		if (event.type == pygame.KEYDOWN and event.key == pygame.K_RETURN and turn == client.player_id and IS_GOVERNMENT):
 
 			direction = ["u" if ghost[2] else "r"]
-			client.doMove(b"p{}{}{}".format(ghost[0],direction[0],ghost[1]))
+			data = "p{}{}{}".format(ghost[0],direction[0],8-ghost[1])
+			client.doMove(bytes(data, "ascii")) 
+
+		if (event.type == pygame.KEYDOWN and event.key == pygame.K_SPACE and turn == client.player_id and IS_GOVERNMENT):
+			ghost[2] = not ghost[2]
 
 	#Draw players
 	for i in range(len(players)):
@@ -238,8 +243,8 @@ while True:
 		scale_sprites()
 
 	if IS_GOVERNMENT and turn == client.player_id:
-		ghost = [max(ghost[0], 0), max(ghost[1], 0)] #Keeps ghost within board
-		ghost = [min(ghost[0], 8), min(ghost[1], 8)]
+		ghost = [max(ghost[0], 0), max(ghost[1], 0),ghost[2]] #Keeps ghost within board
+		ghost = [min(ghost[0], 8), min(ghost[1], 8),ghost[2]]
 		pos = posPx(ghost)
 		localSprite = ghostSprite
 		if ghost[2]: # Is vertical?
@@ -252,7 +257,8 @@ while True:
 
 	pygame.display.set_caption("You are player %s, it's player %s's turn" % (client.player_id+1,turn+1))
 
+
 	pygame.display.flip()
-	screen.blit(boardSprite,(0,0))
+	pygame.display.fill((0,0,0))
 	time.sleep(0.01)
 
