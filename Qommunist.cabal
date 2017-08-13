@@ -4,7 +4,6 @@ version:             0.1.0.0
 -- description:
 homepage:            https://github.com/githubuser/Qommunist#readme
 license:             BSD3
-license-file:        LICENSE
 author:              Jonathan Lööv
 maintainer:          jonathan.loov@gmail.com
 copyright:           2017 Jonathan Lööv
